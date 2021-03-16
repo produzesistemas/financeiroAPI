@@ -42,6 +42,7 @@ namespace financeiroAPI
             services.AddScoped(typeof(IContasAPagarRepository<>), typeof(ContasAPagarRepository<>));
             services.AddScoped(typeof(ICategoriaContasAPagarRepository<>), typeof(CategoriaContasAPagarRepository<>));
             services.AddScoped(typeof(ICategoriaContasAPagarPlanoContasRepository<>), typeof(CategoriaContasAPagarPlanoContasRepository<>));
+            services.AddScoped(typeof(IEmpresaAspNetUsersRepository<>), typeof(EmpresaAspNetUsersRepository<>));
             services.AddControllersWithViews();
             // In production, the Angular files will be served from this directory
             services.AddSpaStaticFiles(configuration =>

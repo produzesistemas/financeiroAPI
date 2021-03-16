@@ -7,5 +7,8 @@ namespace Model
     {
         public string ApplicationUserId { get; set; }
         public int EmpresaId { get; set; }
+
+        [NotMapped]
+        public ApplicationUser ApplicationUser { get; set; }
     }
 }

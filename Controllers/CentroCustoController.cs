@@ -75,10 +75,6 @@ namespace financeiroAPI.Controllers
                 }
                 if (entity.Id > decimal.Zero)
                 {
-                    if (genericRepository.Where(x => x.Codigo == entity.Codigo && x.EmpresaId == empresaId).Any())
-                    {
-                        return BadRequest("Centro de custo com esse código já cadastrado.");
-                    }
                     var entityBase = genericRepository.Get(entity.Id);
                     entityBase.Descricao = entity.Descricao;
                     entityBase.Codigo = entity.Codigo;

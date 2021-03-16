@@ -114,6 +114,7 @@ namespace financeiroAPI.Controllers
                     {
                         List<Claim> claims = new List<Claim>();
                         claims.Add(new Claim(ClaimTypes.Role, "Empresa"));
+                        claims.Add(new Claim(ClaimTypes.Role, "CEO"));
                         empresa.Modulos.ForEach(modulo =>
                         {
                             claims.Add(new Claim(ClaimTypes.Role, modulo.Name));
