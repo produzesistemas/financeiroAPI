@@ -5,10 +5,15 @@ using Microsoft.AspNetCore.Mvc;
 using Model;
 using Model.Filters;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Security.Claims;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Xml;
 using UnitOfWork;
 
 namespace financeiroAPI.Controllers
@@ -21,6 +26,7 @@ namespace financeiroAPI.Controllers
         private IGenericRepository<PlanoContas> planoContasRepository;
         private IContasAPagarRepository<ContasAPagar> contasaPagarRepository;
         private IGenericRepository<Empresa> empresaRepository;
+        private static readonly Encoding LocalEncoding = Encoding.UTF8;
         public ContasaPagarController(IGenericRepository<ContasAPagar> genericRepository,
         IContasAPagarRepository<ContasAPagar> contasaPagarRepository,
         IGenericRepository<PlanoContas> planoContasRepository,
@@ -610,6 +616,147 @@ namespace financeiroAPI.Controllers
             {
                 return BadRequest("Falha na conversão do arquivo - " + ex.Message);
             }
+        }
+
+        [HttpPost()]
+        [Route("lancamentonf")]
+        [Authorize()]
+        public async Task<IActionResult> LancamentoNF()
+        {
+            try
+            {
+                ClaimsPrincipal currentUser = this.User;
+                var id = currentUser.Claims.FirstOrDefault(z => z.Type.Contains("primarysid")).Value;
+                var empresaId = Convert.ToInt32(currentUser.Claims.FirstOrDefault(z => z.Type.Contains("sid")).Value);
+                if ((id == null) || (empresaId == 0))
+                {
+                    return BadRequest("Acesso negado.");
+                }
+
+                var lst = new List<ContasAPagar>();
+                using (var memoryStream = new MemoryStream())
+                {
+                    await Request.Form.Files[0].CopyToAsync(memoryStream);
+                    byte[] dataXML = memoryStream.ToArray();
+
+                    //validou = appNotaFiscalEletronica.validaXML3(dataXML);
+                    //validouV2 = appNotaFiscalEletronica.validaXML2(dataXML);
+
+                    XmlDocument oXML = new XmlDocument();
+                    string xml = LocalEncoding.GetString(dataXML);
+                    oXML.LoadXml(xml);
+                    XmlNodeList nfeProc = oXML.GetElementsByTagName("procEventoNFe");
+                    XmlNodeList evento = ((XmlElement)nfeProc[0]).GetElementsByTagName("evento");
+                    XmlNodeList infEvento = ((XmlElement)evento[0]).GetElementsByTagName("infEvento");
+
+                    foreach (XmlElement nodo in infEvento)
+                    {
+                        XmlNodeList CNPJ = nodo.GetElementsByTagName("CNPJ");
+                        XmlNodeList chNFe = nodo.GetElementsByTagName("chNFe");
+                        XmlNodeList dtEmissao = nodo.GetElementsByTagName("dhEvento");
+                        //dataEmissao = dtEmissao[0].InnerText;
+                        //CNPJCPFEmitente = Convert.ToUInt64(CNPJ[0].InnerText).ToString(@"00\.000\.000\/0000\-00");
+                        //chaveNFE = chNFe[0].InnerText;
+                        //NomeEmitente = m.From.DisplayName;
+
+                    }
+
+                    // Coleta a versão da NFE
+                    XmlNodeList infNFe = oXML.GetElementsByTagName("infNFe");
+
+                    foreach (XmlElement vr in infNFe)
+                    {
+                        //versaoNF = vr.Attributes["versao"].Value;
+                    }
+
+                    XmlNodeList emit = ((XmlElement)infNFe[0]).GetElementsByTagName("emit");
+                    XmlNodeList dest = ((XmlElement)infNFe[0]).GetElementsByTagName("dest");
+                    XmlNodeList ide = ((XmlElement)infNFe[0]).GetElementsByTagName("ide");
+                    XmlNodeList vl = ((XmlElement)infNFe[0]).GetElementsByTagName("total");
+
+                    //Loop para pegar os elementos CNPJ e Nome do Emitente
+                    foreach (XmlElement nodo in emit)
+                    {
+                        XmlNodeList checaVazioEmit = nodo.GetElementsByTagName("CNPJ");
+
+                        if (checaVazioEmit.Count == 1)
+                        {
+                            XmlNodeList CNPJ = nodo.GetElementsByTagName("CNPJ");
+                            //CNPJCPFEmitente = Convert.ToUInt64(CNPJ[0].InnerText).ToString(@"00\.000\.000\/0000\-00");
+                        }
+                        else
+                        {
+                            XmlNodeList CNPJ = nodo.GetElementsByTagName("CPF");
+                            //CNPJCPFEmitente = Convert.ToUInt64(CNPJ[0].InnerText).ToString(@"000\.000\.000\-00");
+                        }
+
+                        XmlNodeList Nome = nodo.GetElementsByTagName("xNome");
+                        //NomeEmitente = Nome[0].InnerText;
+                    }
+
+                    //Loop para pegar os elementos CNPJ e Nome do Destinatario
+                    foreach (XmlElement nodDest in dest)
+                    {
+                        //XmlNodeList checaVazio = nodDest.GetElementsByTagName("CNPJ");
+
+                        //if (checaVazio.Count == 1)
+                        //{
+                        //    XmlNodeList CNPJ0 = nodDest.GetElementsByTagName("CNPJ");
+                        //    CNPJCPFDestinatario = Convert.ToUInt64(CNPJ0[0].InnerText).ToString(@"00\.000\.000\/0000\-00");
+                        //}
+                        //else
+                        //{
+                        //    XmlNodeList CNPJ0 = nodDest.GetElementsByTagName("CPF");
+                        //    CNPJCPFDestinatario = Convert.ToUInt64(CNPJ0[0].InnerText).ToString(@"000\.000\.000\-00");
+                        //}
+
+                        //XmlNodeList Nome0 = nodDest.GetElementsByTagName("xNome");
+                        //NomeDestinatario = Nome0[0].InnerText;
+                    }
+
+                    //Loop para pegar os elementos Natureza, Numero NF e Data de emissão
+                    foreach (XmlElement nodIde in ide)
+                    {
+                        //XmlNodeList nat = nodIde.GetElementsByTagName("natOp");
+                        //XmlNodeList num = nodIde.GetElementsByTagName("nNF");
+
+                        //if (versaoNF == "3.10")
+                        //{
+                        //    XmlNodeList dtEmissao = nodIde.GetElementsByTagName("dhEmi");
+                        //    dataEmissao = dtEmissao[0].InnerText;
+                        //}
+
+                        //if (versaoNF == "2.00")
+                        //{
+                        //    XmlNodeList dtEmissao = nodIde.GetElementsByTagName("dEmi");
+                        //    dataEmissao = dtEmissao[0].InnerText;
+                        //}
+
+                        //XmlNodeList tipo = nodIde.GetElementsByTagName("tpNF");
+
+                        //natOperacao = nat[0].InnerText;
+                        //numeroNF = num[0].InnerText;
+                        //tipoNF = tipo[0].InnerText;
+                    }
+
+                    //Loop para pegar os elementos Identificação da Nota
+                    foreach (XmlNode oNo in infNFe)
+                    {
+                        //chaveNFE = oNo.Attributes.GetNamedItem("Id").Value;
+                        //chaveNFE = chaveNFE.Replace("NFe", "");
+                    }
+
+                    //nfe.arquivoXML = dataXML;
+                    //nfe.nomeXML = attachment.Filename;
+                }
+
+                return new JsonResult(lst);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("Falha na conversão do arquivo - " + ex.Message);
+            }
+
         }
     }
 }
