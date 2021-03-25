@@ -638,27 +638,18 @@ namespace financeiroAPI.Controllers
                 {
                     await Request.Form.Files[0].CopyToAsync(memoryStream);
                     byte[] dataXML = memoryStream.ToArray();
-
-                    //validou = appNotaFiscalEletronica.validaXML3(dataXML);
-                    //validouV2 = appNotaFiscalEletronica.validaXML2(dataXML);
-
                     XmlDocument oXML = new XmlDocument();
                     string xml = LocalEncoding.GetString(dataXML);
                     oXML.LoadXml(xml);
-                    XmlNodeList nfeProc = oXML.GetElementsByTagName("procEventoNFe");
-                    XmlNodeList evento = ((XmlElement)nfeProc[0]).GetElementsByTagName("evento");
-                    XmlNodeList infEvento = ((XmlElement)evento[0]).GetElementsByTagName("infEvento");
-
-                    foreach (XmlElement nodo in infEvento)
+                    XmlNodeList nfeProc = oXML.GetElementsByTagName("nfeProc");
+                    foreach (XmlElement element in nfeProc)
                     {
-                        XmlNodeList CNPJ = nodo.GetElementsByTagName("CNPJ");
-                        XmlNodeList chNFe = nodo.GetElementsByTagName("chNFe");
-                        XmlNodeList dtEmissao = nodo.GetElementsByTagName("dhEvento");
-                        //dataEmissao = dtEmissao[0].InnerText;
-                        //CNPJCPFEmitente = Convert.ToUInt64(CNPJ[0].InnerText).ToString(@"00\.000\.000\/0000\-00");
-                        //chaveNFE = chNFe[0].InnerText;
-                        //NomeEmitente = m.From.DisplayName;
 
+                    }
+
+                        if (((XmlElement)nfeProc[0]).GetAttribute("versao") != "4.00")
+                    {
+                        return BadRequest("Versão incorreta do XML. Versão atual é a 4.00");
                     }
 
                     // Coleta a versão da NFE

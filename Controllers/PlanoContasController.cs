@@ -158,18 +158,24 @@ namespace financeiroAPI.Controllers
                     {
                         if (!line.Equals(""))
                         {
-                            var classificacao = line.Substring(0, 27);
-                            var descricao = line.Substring(27, 39);
+                            var contaReduzida = line.Substring(0, 7);
+                            var classificacao = line.Substring(7, 20);
+                            var descricao = line.Substring(27, 40);
                             var tipo = line.Substring(67, 1);
-                            if ((tipo.Equals("S")) || (tipo.Equals("A")))
+                            if ((!string.IsNullOrEmpty(contaReduzida)) &&
+                                (!string.IsNullOrEmpty(classificacao)) &&
+                                (!string.IsNullOrEmpty(descricao)) &&
+                                (!string.IsNullOrEmpty(tipo)) &&
+                                (tipo.Equals("S") || tipo.Equals("A")))
                             {
                                 genericRepository.Insert(new PlanoContas()
                                 {
                                     ApplicationUserId = id,
                                     Ativo = true,
-                                    Classificacao = classificacao,
+                                    Classificacao = classificacao.Trim(),
+                                    ContaReduzida = Convert.ToInt32(contaReduzida),
                                     CreateDate = DateTime.Now,
-                                    Descricao = descricao,
+                                    Descricao = descricao.Trim(),
                                     EmpresaId = empresaId,
                                     TipoContaId = tipoContaRepository.Where(x => x.Sigla == tipo).FirstOrDefault().Id
                                 });
@@ -177,7 +183,7 @@ namespace financeiroAPI.Controllers
                         }
                     }
                 }
-                return new JsonResult(lst);
+                return Ok();
             }
             catch (Exception ex)
             {

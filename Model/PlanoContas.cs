@@ -14,6 +14,7 @@ namespace Model
         public string UpdateApplicationUserId { get; set; }
         public int EmpresaId { get; set; }
         public int TipoContaId { get; set; }
+        public int? ContaReduzida { get; set; }
         public string ApplicationUserId { get; set; }
 
         [NotMapped]
