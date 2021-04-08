@@ -192,7 +192,12 @@ namespace financeiroAPI.Controllers
                 {
                     return BadRequest("Usuário não encontrado! Efetue o login.");
                 }
-                return new JsonResult(empresaRepository.Get(empresaAspNetUsersRepository.Where(x => x.ApplicationUserId == id).FirstOrDefault().Id));
+                var empresaId = Convert.ToInt32(currentUser.Claims.FirstOrDefault(z => z.Type.Contains("sid")).Value);
+                if (empresaId == decimal.Zero)
+                {
+                    return new OkResult();
+                }
+                return new JsonResult(empresaRepository.Get(empresaId));
             }
             catch (Exception ex)
             {
@@ -207,30 +212,63 @@ namespace financeiroAPI.Controllers
         {
             try
             {
+                ClaimsPrincipal currentUser = this.User;
+                var id = currentUser.Claims.FirstOrDefault(z => z.Type.Contains("primarysid")).Value;
+                if (id == null)
+                {
+                    return BadRequest("Usuário não encontrado! Efetue o login.");
+                }
+                //var empresaId = Convert.ToInt32(currentUser.Claims.FirstOrDefault(z => z.Type.Contains("sid")).Value);
+
                 var empresa = JsonConvert.DeserializeObject<Empresa>(Convert.ToString(Request.Form["empresa"]));
                 var pathToSave = string.Concat(_hostEnvironment.ContentRootPath, configuration["pathFileEmpresa"]);
                 var fileDelete = pathToSave;
-                var empresaBase = genericRepository.Get(empresa.Id);
-                if (Request.Form.Files.Count() > decimal.Zero)
+                
+                if (empresa.Id == decimal.Zero)
                 {
-                    var extension = Path.GetExtension(Request.Form.Files[0].FileName);
-                    var fileName = string.Concat(Guid.NewGuid().ToString(), extension);
-                    using (var stream = new FileStream(Path.Combine(pathToSave, fileName), FileMode.Create))
+                    if (Request.Form.Files.Count() > decimal.Zero)
                     {
-                        Request.Form.Files[0].CopyTo(stream);
+                        var extension = Path.GetExtension(Request.Form.Files[0].FileName);
+                        var fileName = string.Concat(Guid.NewGuid().ToString(), extension);
+                        using (var stream = new FileStream(Path.Combine(pathToSave, fileName), FileMode.Create))
+                        {
+                            Request.Form.Files[0].CopyTo(stream);
+                        }
+                        empresa.NomeImagem = fileName;
                     }
-                    fileDelete = string.Concat(fileDelete, empresaBase.NomeImagem);
-                    empresaBase.NomeImagem = fileName;
-                }
+                    empresa.Ativo = true;
+                    genericRepository.Insert(empresa);
+                    var empresaAspNetUsers = new EmpresaAspNetUsers()
+                    {
+                        EmpresaId = empresa.Id,
+                        ApplicationUserId = id
+                    };
+                    empresaAspNetUsersRepository.Insert(empresaAspNetUsers);
+                } else
+                {
+                    var empresaBase = genericRepository.Get(empresa.Id);
+                    if (Request.Form.Files.Count() > decimal.Zero)
+                    {
+                        var extension = Path.GetExtension(Request.Form.Files[0].FileName);
+                        var fileName = string.Concat(Guid.NewGuid().ToString(), extension);
+                        using (var stream = new FileStream(Path.Combine(pathToSave, fileName), FileMode.Create))
+                        {
+                            Request.Form.Files[0].CopyTo(stream);
+                        }
+                        fileDelete = string.Concat(fileDelete, empresaBase.NomeImagem);
+                        empresaBase.NomeImagem = fileName;
+                    }
                     empresaBase.Nome = empresa.Nome;
                     empresaBase.CodigoFilial = empresa.CodigoFilial;
                     empresaBase.NomeUsuarioDominio = empresa.NomeUsuarioDominio;
                     empresaBase.ContaTransitoria = empresa.ContaTransitoria;
                     genericRepository.Update(empresaBase);
-                if (System.IO.File.Exists(fileDelete))
-                {
-                    System.IO.File.Delete(fileDelete);
+                    if (System.IO.File.Exists(fileDelete))
+                    {
+                        System.IO.File.Delete(fileDelete);
+                    }
                 }
+
                 return new OkResult();
             }
             catch (Exception ex)

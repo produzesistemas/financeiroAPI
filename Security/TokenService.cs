@@ -12,7 +12,7 @@ namespace financeiroAPI.Security
 {
     public static class TokenService
     {
-        public static string GenerateToken(IdentityUser user, IConfiguration configuration, Empresa empresa, List<string> permissions)
+        public static string GenerateToken(IdentityUser user, IConfiguration configuration, int empresaId, List<string> permissions)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(configuration["secretJwt"]);
@@ -20,7 +20,7 @@ namespace financeiroAPI.Security
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim(ClaimTypes.Sid, empresa.Id.ToString()),
+                    new Claim(ClaimTypes.Sid, empresaId.ToString()),
                     new Claim(ClaimTypes.PrimarySid, user.Id.ToString())
                 }),
                 

@@ -574,7 +574,7 @@ namespace financeiroAPI.Controllers
                 }
 
                 Expression<Func<ContasAPagar, bool>> p1, p2, p3, p4, p6;
-                Expression<Func<PlanoContas, bool>> p5;
+                Expression<Func<PlanoContas, bool>> p5, p7;
                 var predicate = PredicateBuilder.New<ContasAPagar>();
                 p1 = p => p.EmpresaId == empresaId;
                 predicate = predicate.And(p1);
@@ -597,15 +597,27 @@ namespace financeiroAPI.Controllers
                 var planoContas = planoContasRepository.Where(predicatePC).ToList();
                 if (planoContas.Count() == decimal.Zero)
                 {
-                    return BadRequest("Plano de contas não encontrado. Cadastro o plano de contas ou importe do sistema Domínio.");
+                    return BadRequest("Plano de contas não encontrado. Cadastre o plano de contas com a conta reduzida ou importe do sistema Domínio.");
+                }
+                var semContaReduzida = planoContas.Where(pl => !pl.ContaReduzida.HasValue).ToList();
+                if (semContaReduzida.Count() > decimal.Zero)
+                {
+                    var erros = new List<string>();
+                    semContaReduzida.ForEach(conta =>
+                    {
+                        erros.Add(conta.Descricao);
+                    });
+                    return BadRequest(erros);
                 }
                 MemoryStream memory = new MemoryStream();
                 TextWriter textWriter = new StreamWriter(memory);
                 string separador = ";";
+                textWriter.WriteLine(string.Concat(separador, "0000", separador, empresa.Cnpj.ToString().PadLeft(14, '0'), separador));
+                textWriter.WriteLine(string.Concat(separador, "6000", separador, "X", separador, separador, separador));
                 pagamentos.ForEach(pagamento =>
                 {
-                    textWriter.WriteLine(string.Concat(pagamento.DataPagamento.Value.ToString("dd/MM/yyyy"), separador, empresa.ContaTransitoria.Trim(), separador, planoContas.First(pl => pl.Id == pagamento.PlanoContasId).Classificacao.Replace(".", "").Trim(), separador, pagamento.ValorPago.Value.ToString().Replace(".",""), separador, pagamento.Id.ToString(), separador, pagamento.Referente, separador, separador, empresa.CodigoFilial.ToString(), separador, separador));
-                    textWriter.WriteLine(string.Concat(pagamento.DataPagamento.Value.ToString("dd/MM/yyyy"), separador, planoContas.First(pl => pl.Id == pagamento.PlanoContasId).Classificacao.Replace(".", "").Trim(), separador, empresa.ContaTransitoria.Trim(), separador, pagamento.ValorPago.Value.ToString().Replace(".", ""), separador, pagamento.Id.ToString(), separador, pagamento.Referente, separador, separador, empresa.CodigoFilial.ToString(), separador, separador));
+                        textWriter.WriteLine(string.Concat(separador, "6100", separador, pagamento.DataPagamento.Value.ToString("dd/MM/yyyy"), separador, empresa.ContaTransitoria.Trim(), separador, planoContas.First(pl => pl.Id == pagamento.PlanoContasId).ContaReduzida.Value.ToString().PadLeft(7, '0'), separador, pagamento.ValorPago.Value.ToString().Replace(".", ""), separador, pagamento.Id.ToString(), separador, pagamento.Referente, separador, separador, separador, separador));
+                        textWriter.WriteLine(string.Concat(separador, "6100", separador, pagamento.DataPagamento.Value.ToString("dd/MM/yyyy"), separador, planoContas.First(pl => pl.Id == pagamento.PlanoContasId).ContaReduzida.Value.ToString().PadLeft(7, '0'), separador, empresa.ContaTransitoria.Trim(), separador, pagamento.ValorPago.Value.ToString().Replace(".", ""), separador, pagamento.Id.ToString(), separador, pagamento.Referente, separador, separador, separador, separador));
                 });
                 textWriter.Flush();
                 byte[] bytesInStream = memory.ToArray();

@@ -133,7 +133,7 @@ namespace financeiroAPI.Controllers
                     }
 
                     var applicationUserDTO = new ApplicationUserDTO();
-                    applicationUserDTO.Token = TokenService.GenerateToken(user.Result, configuration, new Empresa() {  Id = 0 }, permissions);
+                    applicationUserDTO.Token = TokenService.GenerateToken(user.Result, configuration, 0, permissions);
                     applicationUserDTO.Email = user.Result.Email;
                     applicationUserDTO.UserName = user.Result.UserName;
                     return new JsonResult(applicationUserDTO);
@@ -171,7 +171,7 @@ namespace financeiroAPI.Controllers
 
                 var applicationUserDTO = new ApplicationUserDTO();
                 var empresa = empresaRepository.Get(genericRepository.Where(x => x.ApplicationUserId == user.Result.Id).FirstOrDefault().EmpresaId);
-                applicationUserDTO.Token = TokenService.GenerateToken(user.Result, configuration, empresa, permissions);
+                applicationUserDTO.Token = TokenService.GenerateToken(user.Result, configuration, empresa.Id, permissions);
                 applicationUserDTO.Email = user.Result.Email;
                 applicationUserDTO.UserName = user.Result.UserName;
                 applicationUserDTO.NomeEmpresa = string.Concat(empresa.Id.ToString(), " - ", empresa.Nome);
@@ -297,6 +297,74 @@ namespace financeiroAPI.Controllers
             {
                 throw ex;
             }
+        }
+
+        [HttpPost()]
+        [AllowAnonymous]
+        [Route("registerPartner")]
+        public async Task<IActionResult> RegisterPartner(ApplicationUser user)
+        {
+            try
+            {
+                var exist = await userManager.FindByEmailAsync(user.Email);
+                if (exist == null)
+                {
+                    user.UserName = user.Email.Split("@").FirstOrDefault();
+                    user.LockoutEnd = DateTime.Now.AddDays(15);
+                    var result = await userManager.CreateAsync(user);
+                    if (result.Succeeded)
+                    {
+                        List<string> permissions = new List<string>();
+                        List <Claim> claims = new List<Claim>();
+                        claims.Add(new Claim(ClaimTypes.Role, "Empresa"));
+                        claims.Add(new Claim(ClaimTypes.Role, "ContasAPagar"));
+                        claims.Add(new Claim(ClaimTypes.Role, "ContasAReceber"));
+                        claims.Add(new Claim(ClaimTypes.Role, "CEO"));
+                        await userManager.AddClaimsAsync(user, claims);
+                        permissions.Add("Empresa");
+                        permissions.Add("ContasAPagar");
+                        permissions.Add("ContasAReceber");
+                        permissions.Add("CEO");
+                        user.Token = TokenService.GenerateToken(user, configuration, 0, permissions);
+                        user.PasswordHash = null;
+                        return new JsonResult(user);
+                    }
+                }
+                else
+                {
+                    ClaimsPrincipal currentUser = this.User;
+                    var id = currentUser.Claims.FirstOrDefault(z => z.Type.Contains("primarysid")).Value;
+                    if (id == null)
+                    {
+                        return BadRequest("Identificação do usuário não encontrada.");
+                    }
+                    var empresa = empresaRepository.Get(genericRepository.Where(x => x.ApplicationUserId == id).FirstOrDefault().EmpresaId);
+
+                    var claimscurrentUser = currentUser.Claims.ToList();
+                    var permissions = claimscurrentUser.Where(c => c.Type.Contains("role")).Select(c => c.Value).ToList();
+                    var applicationUser = new ApplicationUser();
+                    applicationUser = (ApplicationUser)exist;
+                    applicationUser.Token = TokenService.GenerateToken(exist, configuration, empresa.Id, permissions);
+                    var applicationUserDTO = new ApplicationUserDTO();
+                    applicationUserDTO.Token = applicationUser.Token;
+                    applicationUserDTO.Id = applicationUser.Id;
+                    applicationUserDTO.Provider = applicationUser.Provider;
+                    applicationUserDTO.ProviderId = applicationUser.ProviderId;
+                    applicationUserDTO.Email = applicationUser.Email;
+                    applicationUserDTO.UserName = applicationUser.UserName;
+                    //var role = await userManager.GetRolesAsync(exist);
+                    //applicationUserDTO.Role = role.FirstOrDefault();
+                    return new JsonResult(applicationUserDTO);
+                }
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(ex);
+            }
+
+
+            return new JsonResult(user);
+
         }
 
     }
